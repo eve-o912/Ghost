@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GhostVault // Somnia Reactivity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════
+   DESIGN SYSTEM
+   Phosphor terminal × deep-space radar × vault
+════════════════════════════════════════════════ */
+:root {
+  --void: #010203;
+  --deep: #04080c;
+  --surface: #080f14;
+  --panel: #0c151c;
+  --border: #0e2030;
+  --border-bright: #1a3a55;
+  --dim: #1e3a50;
+
+  --phosphor: #00ff88;
+  --phosphor-dim: #00c066;
+  --phosphor-faint: #003322;
+  --phosphor-glow: rgba(0,255,136,0.12);
+
+  --amber: #ffaa00;
+  --amber-dim: #cc8800;
+  --red: #ff3344;
+  --red-dim: #aa2233;
+  --ice: #44aaff;
+
+  --text-primary: #c8e8d0;
+  --text-secondary: #4a7a5a;
+  --text-dim: #1e4030;
+  --text-mono: #00ff88;
+
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-display: 'Bebas Neue', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 13px; }
+
+body {
+  background: var(--void);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+/* Grid overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Scan line sweep */
+body::after {
+  content: '';
+  position: fixed;
+  top: -100%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,255,136,0.3), transparent);
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes scanline {
+  0% { top: -2px; }
+  100% { top: 100vh; }
+}
+
+/* ════════ LAYOUT ════════ */
+.app {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 56px 1fr 40px;
+}
+
+/* ════════ HEADER ════════ */
+header {
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  background: rgba(1,2,3,0.95);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+}
+
+.header-left { display: flex; align-items: center; gap: 20px; }
+
+.logo {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.08em;
+  color: var(--phosphor);
+  text-shadow: 0 0 20px var(--phosphor), 0 0 40px rgba(0,255,136,0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 22px;
+  height: 22px;
+  position: relative;
+}
+
+.logo-icon svg { width: 100%; height: 100%; }
+
+.sys-badge {
+  font-size: 9px;
+  color: var(--text-secondary);
+  letter-spacing: 0.2em;
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 0.12em;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--phosphor-dim);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--phosphor-dim); }
+  50% { opacity: 0.5; box-shadow: none; }
+}
+
+.connect-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--text-secondary);
+  padding: 7px 16px;
+  cursor: crosshair;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.connect-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--phosphor-glow);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.connect-btn:hover { border-color: var(--phosphor); color: var(--phosphor); }
+.connect-btn:hover::before { opacity: 1; }
+.connect-btn.connected { border-color: var(--phosphor); color: var(--phosphor); }
+
+/* ════════ MAIN CONTENT ════════ */
+main {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  grid-template-rows: auto auto 1fr;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ════════ VAULT CORE (left col, full height) ════════ */
+.vault-core {
+  grid-row: 1 / -1;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Radar / Vault Hero ── */
+.vault-hero {
+  padding: 40px 36px 32px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 36px;
+  align-items: center;
+  min-height: 260px;
+}
+
+/* Radar canvas */
+.radar-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+}
+
+#radar {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  display: block;
+}
+
+.radar-crosshair {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.radar-crosshair::before,
+.radar-crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(0,255,136,0.15);
+}
+
+.radar-crosshair::before {
+  top: 50%; left: 0; right: 0; height: 1px;
+  transform: translateY(-50%);
+}
+
+.radar-crosshair::after {
+  left: 50%; top: 0; bottom: 0; width: 1px;
+  transform: translateX(-50%);
+}
+
+.radar-label {
+  position: absolute;
+  font-size: 8px;
+  color: var(--text-secondary);
+  letter-spacing: 0.15em;
+}
+
+.radar-label.top { top: -18px; left: 50%; transform: translateX(-50%); }
+.radar-label.right { right: -30px; top: 50%; transform: translateY(-50%); }
+
+/* State display */
+.vault-info {}
+
+.vault-state-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.state-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.state-indicator.open {
+  background: var(--phosphor);
+  box-shadow: 0 0 8px var(--phosphor), 0 0 20px rgba(0,255,136,0.4);
+  animation: blink-indicator 1s step-end infinite;
+}
+
+.state-indicator.locked { background: var(--text-secondary); }
+.state-indicator.claimed { background: var(--ice); }
+
+@keyframes blink-indicator {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.vault-state-label {
+  font-family: var(--font-display);
+  font-size: 52px;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--dim);
+  transition: color 0.4s, text-shadow 0.4s;
+}
+
+.vault-state-label.open {
+  color: var(--phosphor);
+  text-shadow: 0 0 30px rgba(0,255,136,0.5);
+}
+
+.vault-state-label.locked { color: var(--border-bright); }
+
+.vault-desc {
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+  line-height: 2;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+/* Timer */
+.timer-display {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.timer-digits {
+  font-family: var(--font-display);
+  font-size: 68px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--border-bright);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s;
+}
+
+.timer-digits.active { color: var(--text-primary); }
+.timer-digits.urgent { color: var(--amber); text-shadow: 0 0 20px rgba(255,170,0,0.5); animation: flicker 0.3s ease infinite; }
+.timer-digits.critical { color: var(--red); text-shadow: 0 0 20px rgba(255,51,68,0.6); }
+
+@keyframes flicker {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.timer-unit {
+  font-size: 9px;
+  color: var(--text-secondary);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding-bottom: 10px;
+}
+
+/* ── Stats bar ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-cell {
+  padding: 14px 20px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+
+.stat-cell:last-child { border-right: none; }
+
+.stat-cell::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20px; right: 20px;
+  height: 1px;
+  background: var(--phosphor-faint);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.stat-cell:hover::after { opacity: 1; }
+
+.stat-lbl {
+  font-size: 8px;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.stat-val {
+  font-size: 16px;
+  color: var(--border-bright);
+  font-weight: 600;
+  transition: color 0.3s;
+}
+
+.stat-val.live { color: var(--phosphor); }
+.stat-val.amber { color: var(--amber); }
+
+/* ── Presence & Claim ── */
+.presence-section {
+  padding: 28px 36px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.section-tag {
+  font-size: 8px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--phosphor-dim);
+  border: 1px solid var(--phosphor-faint);
+  padding: 3px 8px;
+}
+
+.section-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Presence card */
+.presence-card {
+  border: 1px solid var(--border);
+  background: var(--deep);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.presence-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: transparent;
+  transition: background 0.3s;
+}
+
+.presence-card.verified { border-color: var(--phosphor-dim); }
+.presence-card.verified::before { background: var(--phosphor); box-shadow: 0 0 12px var(--phosphor); }
+.presence-card.absent { border-color: var(--red-dim); }
+.presence-card.absent::before { background: var(--red); }
+
+.presence-status-text {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.presence-status-text.verified { color: var(--phosphor); }
+.presence-status-text.absent { color: var(--red); }
+.presence-status-text.idle { color: var(--text-secondary); }
+
+.presence-status-text .badge {
+  font-size: 8px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  opacity: 0.7;
+}
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+
+.proof-row {
+  background: var(--deep);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.proof-key { color: var(--text-secondary); letter-spacing: 0.05em; }
+
+.proof-val {
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+
+.proof-val.ok { color: var(--phosphor); }
+.proof-val.fail { color: var(--red); }
+.proof-val.pending { color: var(--border-bright); }
+.proof-val.amber { color: var(--amber); }
+
+/* Claim button */
+.claim-wrap { margin-top: 20px; }
+
+.claim-btn {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  padding: 18px 24px;
+  cursor: crosshair;
+  border: none;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.claim-btn:disabled { cursor: not-allowed; }
+
+.claim-btn.inactive {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--dim);
+}
+
+.claim-btn.ready {
+  background: var(--phosphor);
+  color: var(--void);
+  border: 1px solid var(--phosphor);
+}
+
+.claim-btn.ready::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,0.25) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: btn-shimmer 2.5s linear infinite;
+}
+
+@keyframes btn-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.claim-btn.ready:hover { background: #33ffaa; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,255,136,0.4); }
+.claim-btn.claimed { background: transparent; border: 1px solid var(--phosphor-dim); color: var(--phosphor-dim); }
+.claim-btn.loading { background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); }
+.claim-btn.error { background: transparent; border: 1px solid var(--red-dim); color: var(--red); }
+
+/* Loading dots */
+.loading-dots::after {
+  content: '';
+  animation: dots 1.2s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* ── Demo controls ── */
+.demo-section {
+  padding: 24px 36px;
+  border-bottom: 1px solid var(--border);
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.demo-btn {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 12px 14px;
+  cursor: crosshair;
+  transition: all 0.15s;
+  text-align: left;
+  line-height: 1.8;
+}
+
+.demo-btn:hover { border-color: var(--phosphor-dim); color: var(--phosphor); background: var(--phosphor-glow); }
+
+.demo-btn-icon { font-size: 14px; display: block; margin-bottom: 4px; }
+.demo-btn-title { color: var(--text-primary); font-size: 10px; font-weight: 500; display: block; }
+
+/* ── Contract info ── */
+.contract-section {
+  padding: 20px 36px;
+}
+
+.contract-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+
+.contract-row:last-child { border-bottom: none; }
+.contract-label { color: var(--text-secondary); letter-spacing: 0.1em; }
+
+.contract-addr {
+  color: var(--phosphor-dim);
+  font-size: 10px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.contract-addr:hover { color: var(--phosphor); }
+
+/* ════════ RIGHT COLUMN ════════ */
+.right-col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Block counter */
+.block-ticker {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.block-num-display {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.block-label { font-size: 8px; color: var(--text-secondary); letter-spacing: 0.2em; text-transform: uppercase; }
+.block-value { font-family: var(--font-display); font-size: 22px; color: var(--phosphor); letter-spacing: 0.06em; }
+
+.block-progress-wrap {
+  flex: 1;
+  margin: 0 16px;
+  height: 2px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.block-progress {
+  height: 100%;
+  background: var(--phosphor);
+  box-shadow: 0 0 8px var(--phosphor);
+  transition: width 0.9s linear;
+}
+
+/* Feed */
+.feed-wrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.feed-header-row {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--void);
+  z-index: 10;
+}
+
+.feed-title { font-size: 8px; color: var(--text-secondary); letter-spacing: 0.25em; text-transform: uppercase; }
+.feed-live { display: flex; align-items: center; gap: 5px; font-size: 8px; color: var(--phosphor-dim); letter-spacing: 0.1em; }
+.feed-live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--phosphor); animation: pulse-dot 1.5s ease-in-out infinite; }
+
+.feed-list { padding: 0; }
+
+.feed-item {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  position: relative;
+  animation: feed-in 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes feed-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.feed-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+}
+
+.feed-item.type-trigger::before { background: var(--phosphor); box-shadow: 0 0 6px var(--phosphor); }
+.feed-item.type-claim::before { background: var(--ice); }
+.feed-item.type-close::before { background: var(--border-bright); }
+.feed-item.type-system::before { background: var(--dim); }
+.feed-item.type-block::before { background: var(--text-dim); }
+
+.feed-type-tag {
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.feed-item.type-trigger .feed-type-tag { color: var(--phosphor); }
+.feed-item.type-claim .feed-type-tag { color: var(--ice); }
+.feed-item.type-close .feed-type-tag { color: var(--text-secondary); }
+.feed-item.type-system .feed-type-tag { color: var(--text-dim); }
+.feed-item.type-block .feed-type-tag { color: var(--text-dim); }
+
+.feed-main { font-size: 11px; color: var(--text-primary); line-height: 1.5; margin-bottom: 3px; }
+.feed-sub { font-size: 9px; color: var(--text-secondary); line-height: 1.6; font-style: italic; }
+.feed-meta { font-size: 9px; color: var(--text-dim); margin-top: 4px; display: flex; gap: 10px; }
+
+.feed-empty {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.feed-empty-icon { font-size: 24px; margin-bottom: 12px; opacity: 0.3; }
+.feed-empty-text { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; line-height: 2; }
+
+/* Presence Feed */
+.presence-feed {
+  border-top: 1px solid var(--border);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pf-header {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 8px;
+  color: var(--text-secondary);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--void);
+}
+
+.pf-item {
+  padding: 7px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 9px;
+  animation: feed-in 0.25s ease-out;
+}
+
+.pf-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--phosphor-dim);
+  flex-shrink: 0;
+}
+
+.pf-addr { color: var(--phosphor-dim); flex: 1; }
+.pf-block { color: var(--text-secondary); }
+.pf-you { color: var(--amber); font-size: 8px; letter-spacing: 0.1em; }
+
+/* ════════ FOOTER ════════ */
+footer {
+  border-top: 1px solid var(--border);
+  background: rgba(1,2,3,0.95);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+
+.footer-addr { color: var(--text-secondary); }
+.footer-net { color: var(--phosphor-dim); }
+.footer-rpc { color: var(--text-dim); }
+
+/* ════════ NOTIFICATION ════════ */
+.notif-stack {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.notif {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  font-size: 10px;
+  max-width: 320px;
+  animation: notif-in 0.3s ease-out;
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes notif-in {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.notif::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+}
+
+.notif.success { border-color: var(--phosphor-dim); }
+.notif.success::before { background: var(--phosphor); }
+.notif.success .notif-title { color: var(--phosphor); }
+
+.notif.trigger { border-color: var(--phosphor); }
+.notif.trigger::before { background: var(--phosphor); box-shadow: 0 0 10px var(--phosphor); }
+.notif.trigger .notif-title { color: var(--phosphor); }
+
+.notif.error { border-color: var(--red-dim); }
+.notif.error::before { background: var(--red); }
+.notif.error .notif-title { color: var(--red); }
+
+.notif.warn { border-color: var(--amber-dim); }
+.notif.warn::before { background: var(--amber); }
+.notif.warn .notif-title { color: var(--amber); }
+
+.notif-title { font-weight: 500; letter-spacing: 0.1em; margin-bottom: 3px; font-size: 10px; }
+.notif-body { color: var(--text-secondary); line-height: 1.6; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+/* Selection */
+::selection { background: rgba(0,255,136,0.2); color: var(--phosphor); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══ HEADER ══ -->
+  <header>
+    <div class="header-left">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 22 22" fill="none">
+            <ellipse cx="11" cy="9" rx="7" ry="8" stroke="#00ff88" stroke-width="1.2"/>
+            <path d="M4 14 Q4 22 7 20 Q9 18 11 20 Q13 22 15 20 Q18 22 18 14" stroke="#00ff88" stroke-width="1.2" fill="none"/>
+            <circle cx="8.5" cy="9" r="1.2" fill="#00ff88"/>
+            <circle cx="13.5" cy="9" r="1.2" fill="#00ff88"/>
+          </svg>
+        </div>
+        GhostVault
+      </div>
+      <div class="sys-badge">Somnia Reactivity v1</div>
+    </div>
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span id="connStatus">SYSTEM ONLINE</span>
+    </div>
+    <button class="connect-btn" id="connectBtn" onclick="toggleWallet()">
+      [ CONNECT WALLET ]
+    </button>
+  </header>
+
+  <!-- ══ MAIN ══ -->
+  <main>
+
+    <!-- ══ LEFT: VAULT CORE ══ -->
+    <div class="vault-core">
+
+      <!-- Vault Hero -->
+      <div class="vault-hero">
+        <!-- Radar -->
+        <div class="radar-wrap">
+          <canvas id="radar" width="200" height="200"></canvas>
+          <div class="radar-crosshair"></div>
+          <div class="radar-label top">N</div>
+          <div class="radar-label right">E</div>
+        </div>
+
+        <!-- Vault state -->
+        <div class="vault-info">
+          <div class="vault-state-row">
+            <div class="state-indicator locked" id="stateIndicator"></div>
+            <div style="font-size:9px;color:var(--text-secondary);letter-spacing:0.15em;text-transform:uppercase;" id="stateTag">VAULT STATUS</div>
+          </div>
+
+          <div class="vault-state-label locked" id="stateLabel">LOCKED</div>
+          <div class="vault-desc" id="stateDesc">
+            Monitoring WatchedProtocol<br>
+            Threshold: 0.01 STT · Window: 30 blocks
+          </div>
+
+          <div class="timer-display">
+            <div class="timer-digits" id="timerDigits">00:00</div>
+            <div class="timer-unit">sec remaining</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stat-cell">
+          <div class="stat-lbl">Vault Balance</div>
+          <div class="stat-val" id="statBalance">— STT</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">Reward / Claim</div>
+          <div class="stat-val" id="statReward">— STT</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">Claims Left</div>
+          <div class="stat-val" id="statClaims">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">Windows Fired</div>
+          <div class="stat-val" id="statWindows">0</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">Total Paid</div>
+          <div class="stat-val" id="statPaid">0.000 STT</div>
+        </div>
+      </div>
+
+      <!-- Presence & Claim -->
+      <div class="presence-section">
+        <div class="section-header">
+          <div class="section-tag">Proof of Presence</div>
+          <div class="section-line"></div>
+        </div>
+
+        <div class="presence-card" id="presenceCard">
+          <div class="presence-status-text idle" id="presenceStatusText">
+            <span id="presenceIcon">◌</span>
+            <span id="presenceLabel">NO ACTIVE WINDOW</span>
+            <span class="badge" id="presenceBadge" style="display:none"></span>
+          </div>
+
+          <div class="proof-grid">
+            <div class="proof-row">
+              <span class="proof-key">window open</span>
+              <span class="proof-val pending" id="pWindow">—</span>
+            </div>
+            <div class="proof-row">
+              <span class="proof-key">trigger block</span>
+              <span class="proof-val pending" id="pTrigger">—</span>
+            </div>
+            <div class="proof-row">
+              <span class="proof-key">your last block</span>
+              <span class="proof-val pending" id="pYourBlock">—</span>
+            </div>
+            <div class="proof-row">
+              <span class="proof-key">presence in window</span>
+              <span class="proof-val pending" id="pPresence">—</span>
+            </div>
+            <div class="proof-row">
+              <span class="proof-key">not yet claimed</span>
+              <span class="proof-val pending" id="pNotClaimed">—</span>
+            </div>
+            <div class="proof-row">
+              <span class="proof-key">claims available</span>
+              <span class="proof-val pending" id="pClaimsLeft">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="claim-wrap">
+          <button class="claim-btn inactive" id="claimBtn" onclick="handleClaim()" disabled>
+            CLAIM REWARD
+          </button>
+        </div>
+      </div>
+
+      <!-- Demo controls -->
+      <div class="demo-section">
+        <div class="section-header">
+          <div class="section-tag">Demo Controls</div>
+          <div class="section-line"></div>
+        </div>
+        <div class="demo-grid">
+          <button class="demo-btn" onclick="simulateTrigger()">
+            <span class="demo-btn-icon">⚡</span>
+            <span class="demo-btn-title">Trigger Swap</span>
+            Fire 0.5 STT swap on WatchedProtocol
+          </button>
+          <button class="demo-btn" onclick="simulatePresence()">
+            <span class="demo-btn-icon">👻</span>
+            <span class="demo-btn-title">Record Presence</span>
+            Stamp wallet active this block
+          </button>
+          <button class="demo-btn" onclick="openExplorer()">
+            <span class="demo-btn-icon">🔍</span>
+            <span class="demo-btn-title">Block Explorer</span>
+            Verify on Somnia testnet
+          </button>
+        </div>
+      </div>
+
+      <!-- Contract addresses -->
+      <div class="contract-section">
+        <div class="section-header" style="margin-bottom:12px;">
+          <div class="section-tag">Contracts</div>
+          <div class="section-line"></div>
+        </div>
+        <div class="contract-row">
+          <span class="contract-label">GhostVault.sol</span>
+          <span class="contract-addr" onclick="copyAddr('0xGho5tVau1t...0000')" title="Click to copy">0xGho5t...Vau1t</span>
+        </div>
+        <div class="contract-row">
+          <span class="contract-label">PresenceTracker.sol</span>
+          <span class="contract-addr" onclick="copyAddr('0xPres...Trak')" title="Click to copy">0xPres...Trak</span>
+        </div>
+        <div class="contract-row">
+          <span class="contract-label">WatchedProtocol.sol</span>
+          <span class="contract-addr" onclick="copyAddr('0xWatc...Prot')" title="Click to copy">0xWatc...Prot</span>
+        </div>
+        <div class="contract-row">
+          <span class="contract-label">Reactivity Precompile</span>
+          <span class="contract-addr" style="color:var(--amber-dim)">0x0000...0100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RIGHT COLUMN ══ -->
+    <div class="right-col">
+
+      <!-- Block ticker -->
+      <div class="block-ticker">
+        <div class="block-num-display">
+          <span class="block-label">BLOCK</span>
+          <span class="block-value" id="blockValue">—</span>
+        </div>
+        <div class="block-progress-wrap">
+          <div class="block-progress" id="blockProgress" style="width:0%"></div>
+        </div>
+        <span style="font-size:9px;color:var(--text-secondary);letter-spacing:0.1em;">~1s/block</span>
+      </div>
+
+      <!-- Event feed -->
+      <div class="feed-wrap">
+        <div class="feed-header-row">
+          <span class="feed-title">Reactivity Event Feed</span>
+          <div class="feed-live">
+            <div class="feed-live-dot"></div>
+            LIVE
+          </div>
+        </div>
+        <div class="feed-list" id="feedList">
+          <div class="feed-empty">
+            <div class="feed-empty-icon">◈</div>
+            <div class="feed-empty-text">
+              Subscription active<br>
+              Waiting for events from<br>
+              WatchedProtocol...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Presence feed -->
+      <div class="presence-feed">
+        <div class="pf-header">
+          <span>Active Wallets (Wildcard Sub)</span>
+          <span id="pfTotal">0 tracked</span>
+        </div>
+        <div id="pfList">
+          <div style="padding:16px 20px;font-size:9px;color:var(--text-dim);letter-spacing:0.1em;">
+            No activity recorded yet — PresenceTracker watching all contracts
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ══ FOOTER ══ -->
+  <footer>
+    <span>No oracle. No keeper. No whitelist. No permission from the watched contract.</span>
+    <span class="footer-net">▸ Somnia Testnet · Chain 50312</span>
+    <span class="footer-rpc">RPC: dream-rpc.somnia.network</span>
+  </footer>
+
+</div>
+
+<!-- Notification stack -->
+<div class="notif-stack" id="notifStack"></div>
+
+<script>
+/* ════════════════════════════════════════
+   STATE ENGINE
+   All contract reads/writes would hook
+   into wagmi/viem here in production.
+   This demo simulates the full flow.
+════════════════════════════════════════ */
+const S = {
+  connected: false,
+  wallet: null,
+  block: 1_428_440,
+  windowOpen: false,
+  triggerBlock: null,
+  windowEndBlock: null,
+  rewardPerClaim: 0.1,
+  claimsRemaining: 5,
+  maxClaims: 5,
+  vaultBalance: 2.5,
+  windowCounter: 0,
+  totalPaid: 0,
+  myPresenceBlock: null,
+  hasClaimed: false,
+  secondsLeft: 0,
+  _timer: null,
+  activeWallets: [],   // [{addr, block}]
+  events: [],
+};
+
+/* ════════ RADAR ════════ */
+const canvas = document.getElementById('radar');
+const ctx = canvas.getContext('2d');
+let radarAngle = 0;
+let radarBlips = [];
+
+function drawRadar() {
+  const cx = 100, cy = 100, r = 96;
+  ctx.clearRect(0, 0, 200, 200);
+
+  const open = S.windowOpen;
+  const accent = open ? '#00ff88' : '#0e2030';
+  const accentDim = open ? 'rgba(0,255,136,0.06)' : 'rgba(14,32,48,0.4)';
+
+  // Background
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = '#04080c';
+  ctx.fill();
+
+  // Rings
+  [0.25, 0.5, 0.75, 1].forEach(f => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * f, 0, Math.PI*2);
+    ctx.strokeStyle = open ? 'rgba(0,255,136,0.12)' : 'rgba(14,32,48,0.8)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  });
+
+  // Sweep fill
+  const sweepGrad = ctx.createConicalGradient
+    ? null  // not standard, use manual approach
+    : null;
+
+  // Manual sweep: draw arc from current angle back ~60deg
+  const sweepStart = radarAngle - Math.PI / 3;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, r - 2, sweepStart, radarAngle);
+  ctx.closePath();
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  if (open) {
+    grad.addColorStop(0, 'rgba(0,255,136,0.0)');
+    grad.addColorStop(0.6, 'rgba(0,255,136,0.05)');
+    grad.addColorStop(1, 'rgba(0,255,136,0.12)');
+  } else {
+    grad.addColorStop(0, 'rgba(14,32,48,0.0)');
+    grad.addColorStop(1, 'rgba(14,32,48,0.3)');
+  }
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.restore();
+
+  // Sweep line
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(
+    cx + Math.cos(radarAngle) * (r - 2),
+    cy + Math.sin(radarAngle) * (r - 2)
+  );
+  ctx.strokeStyle = open ? 'rgba(0,255,136,0.8)' : 'rgba(14,32,48,1)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = open ? '#00ff88' : 'transparent';
+  ctx.shadowBlur = open ? 8 : 0;
+  ctx.stroke();
+  ctx.restore();
+
+  // Blips
+  radarBlips = radarBlips.filter(b => b.age < 60);
+  radarBlips.forEach(b => {
+    const alpha = 1 - b.age / 60;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 3 * alpha + 1, 0, Math.PI*2);
+    ctx.fillStyle = b.color === 'amber'
+      ? `rgba(255,170,0,${alpha})` 
+      : `rgba(0,255,136,${alpha})`;
+    if (alpha > 0.7) {
+      ctx.shadowColor = b.color === 'amber' ? '#ffaa00' : '#00ff88';
+      ctx.shadowBlur = 8;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    b.age++;
+  });
+
+  // Border
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.strokeStyle = open ? 'rgba(0,255,136,0.3)' : 'rgba(14,32,48,1)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  radarAngle += open ? 0.025 : 0.015;
+  if (radarAngle > Math.PI * 2) radarAngle -= Math.PI * 2;
+
+  requestAnimationFrame(drawRadar);
+}
+
+function addBlip(color = 'green') {
+  const cx = 100, cy = 100, r = 80;
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 20 + Math.random() * (r - 20);
+  radarBlips.push({
+    x: cx + Math.cos(angle) * dist,
+    y: cy + Math.sin(angle) * dist,
+    color, age: 0
+  });
+}
+
+drawRadar();
+
+/* ════════ BLOCK TICKER ════════ */
+let blockProgress = 0;
+
+setInterval(() => {
+  S.block++;
+  blockProgress = (blockProgress + 1) % 10;
+  document.getElementById('blockValue').textContent = S.block.toLocaleString();
+  document.getElementById('blockProgress').style.width = (blockProgress * 10) + '%';
+
+  // Auto-close expired windows
+  if (S.windowOpen && S.block > S.windowEndBlock) {
+    closeWindow();
+  }
+
+  // Random presence blips
+  if (Math.random() < 0.3) addBlip('green');
+}, 1000);
+
+/* ════════ WALLET ════════ */
+function toggleWallet() {
+  if (S.connected) {
+    S.connected = false;
+    S.wallet = null;
+    S.myPresenceBlock = null;
+    document.getElementById('connectBtn').textContent = '[ CONNECT WALLET ]';
+    document.getElementById('connectBtn').className = 'connect-btn';
+    document.getElementById('connStatus').textContent = 'SYSTEM ONLINE';
+    document.getElementById('walletAddr') && (document.getElementById('walletAddr').textContent = '');
+    updateUI();
+    showNotif('Wallet disconnected', '', 'warn');
+    return;
+  }
+
+  S.connected = true;
+  S.wallet = '0x' + [...Array(40)].map(() => '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
+  document.getElementById('connectBtn').textContent = short(S.wallet);
+  document.getElementById('connectBtn').className = 'connect-btn connected';
+  document.getElementById('connStatus').textContent = 'WALLET CONNECTED';
+
+  addFeedItem('system', 'Wallet connected', short(S.wallet), '');
+  showNotif('Wallet connected', short(S.wallet), 'success');
+  updateUI();
+}
+
+/* ════════ DEMO ACTIONS ════════ */
+function simulateTrigger() {
+  if (S.windowOpen) { showNotif('Window already open', 'Wait for current window to close', 'warn'); return; }
+
+  const amountIn = (Math.random() * 2 + 0.2).toFixed(3);
+  const from = S.wallet || randAddr();
+
+  S.windowCounter++;
+  S.windowOpen = true;
+  S.triggerBlock = S.block;
+  S.windowEndBlock = S.block + 30;
+  S.claimsRemaining = 5;
+  S.maxClaims = 5;
+  S.hasClaimed = false;
+  S.secondsLeft = 30;
+
+  // Countdown
+  if (S._timer) clearInterval(S._timer);
+  S._timer = setInterval(() => {
+    S.secondsLeft = Math.max(0, S.secondsLeft - 1);
+    updateTimer();
+  }, 1000);
+
+  addBlip('amber');
+  addBlip('amber');
+  addBlip('green');
+
+  addFeedItem('trigger',
+    `Vault triggered — Window #${S.windowCounter}`,
+    `Swap ${amountIn} STT · Reward ${S.rewardPerClaim} STT each · ${S.maxClaims} slots`,
+    from
+  );
+
+  showNotif(
+    `⚡ VAULT OPEN — Window #${S.windowCounter}`,
+    `${S.rewardPerClaim} STT reward · ${S.maxClaims} claimants · 30 seconds`,
+    'trigger'
+  );
+
+  updateUI();
+}
+
+function simulatePresence() {
+  if (!S.connected) { showNotif('Not connected', 'Connect wallet first', 'error'); return; }
+
+  S.myPresenceBlock = S.block;
+
+  // Add to active wallets
+  S.activeWallets.unshift({ addr: S.wallet, block: S.block, isYou: true });
+  if (S.activeWallets.length > 20) S.activeWallets.pop();
+
+  addBlip('amber');
+  addFeedItem('claim', 'Presence recorded by PresenceTracker', `Wallet stamped at block #${S.block}`, S.wallet);
+  showNotif('Presence stamped', `Block #${S.block} — provably active`, 'success');
+
+  updatePFList();
+  updateUI();
+}
+
+// Simulate random wallets showing up in presence feed
+setInterval(() => {
+  if (Math.random() < 0.4) {
+    const addr = randAddr();
+    S.activeWallets.unshift({ addr, block: S.block, isYou: false });
+    if (S.activeWallets.length > 20) S.activeWallets.pop();
+    document.getElementById('pfTotal').textContent = S.activeWallets.length + ' tracked';
+    updatePFList();
+  }
+}, 2500);
+
+function handleClaim() {
+  if (!S.connected) { showNotif('Not connected', 'Connect wallet first', 'error'); return; }
+  if (!S.windowOpen) { showNotif('No open window', '', 'error'); return; }
+  if (S.hasClaimed) { showNotif('Already claimed', 'You already claimed this window', 'warn'); return; }
+  if (!isPresent()) { showNotif('No presence proof', 'Your wallet was not active in the trigger block', 'error'); return; }
+  if (S.claimsRemaining <= 0) { showNotif('No claims left', 'All slots filled', 'warn'); return; }
+
+  const btn = document.getElementById('claimBtn');
+  btn.className = 'claim-btn loading';
+  btn.innerHTML = '<span class="loading-dots">SUBMITTING TX</span>';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    S.hasClaimed = true;
+    S.claimsRemaining--;
+    S.totalPaid += S.rewardPerClaim;
+    S.vaultBalance = Math.max(0, S.vaultBalance - S.rewardPerClaim);
+
+    addFeedItem('claim',
+      `Claimed ${S.rewardPerClaim} STT — proof verified`,
+      `Presence in block #${S.myPresenceBlock} · Window #${S.windowCounter}`,
+      S.wallet
+    );
+
+    showNotif(
+      `✓ Claimed ${S.rewardPerClaim} STT`,
+      'Presence proof verified by PresenceTracker · Trustless · No oracle',
+      'success'
+    );
+
+    updateUI();
+  }, 1800);
+}
+
+function closeWindow() {
+  if (S._timer) { clearInterval(S._timer); S._timer = null; }
+  S.windowOpen = false;
+  S.secondsLeft = 0;
+  addFeedItem('close', `Window #${S.windowCounter} expired`, `${S.maxClaims - S.claimsRemaining} of ${S.maxClaims} claims paid`, '');
+  showNotif(`Window #${S.windowCounter} closed`, `${S.maxClaims - S.claimsRemaining} wallets claimed`, 'warn');
+  updateUI();
+}
+
+function openExplorer() {
+  window.open('https://shannon-explorer.somnia.network', '_blank');
+}
+
+function copyAddr(addr) {
+  navigator.clipboard?.writeText(addr);
+  showNotif('Address copied', addr, 'success');
+}
+
+/* ════════ UI UPDATE ════════ */
+function isPresent() {
+  if (!S.myPresenceBlock || !S.windowOpen) return false;
+  return S.myPresenceBlock >= S.triggerBlock && S.myPresenceBlock <= S.windowEndBlock;
+}
+
+function updateUI() {
+  updateHero();
+  updateStats();
+  updatePresence();
+  updateClaimBtn();
+  updateProofGrid();
+  updateTimer();
+}
+
+function updateHero() {
+  const ind = document.getElementById('stateIndicator');
+  const lbl = document.getElementById('stateLabel');
+  const desc = document.getElementById('stateDesc');
+  const tag = document.getElementById('stateTag');
+
+  if (S.windowOpen) {
+    ind.className = 'state-indicator open';
+    lbl.className = 'vault-state-label open';
+    lbl.textContent = 'OPEN';
+    desc.innerHTML = `Window #${S.windowCounter} · Trigger block #${S.triggerBlock}<br>Closes at block #${S.windowEndBlock}`;
+    tag.textContent = 'CLAIM WINDOW ACTIVE';
+  } else {
+    ind.className = 'state-indicator locked';
+    lbl.className = 'vault-state-label locked';
+    lbl.textContent = 'LOCKED';
+    desc.innerHTML = `Monitoring WatchedProtocol<br>Threshold: 0.01 STT · Window: 30 blocks`;
+    tag.textContent = 'VAULT STATUS';
+  }
+}
+
+function updateTimer() {
+  const el = document.getElementById('timerDigits');
+  if (!S.windowOpen || S.secondsLeft <= 0) {
+    el.textContent = '00:00';
+    el.className = 'timer-digits';
+    return;
+  }
+  const mm = String(Math.floor(S.secondsLeft / 60)).padStart(2,'0');
+  const ss = String(S.secondsLeft % 60).padStart(2,'0');
+  el.textContent = `${mm}:${ss}`;
+  if (S.secondsLeft <= 5) el.className = 'timer-digits critical';
+  else if (S.secondsLeft <= 10) el.className = 'timer-digits urgent';
+  else el.className = 'timer-digits active';
+}
+
+function updateStats() {
+  const live = cls => S.windowOpen ? cls + ' live' : cls;
+  document.getElementById('statBalance').className = 'stat-val amber';
+  document.getElementById('statBalance').textContent = S.vaultBalance.toFixed(3) + ' STT';
+  document.getElementById('statReward').textContent = S.windowOpen ? S.rewardPerClaim + ' STT' : '— STT';
+  document.getElementById('statReward').className = S.windowOpen ? 'stat-val live' : 'stat-val';
+  document.getElementById('statClaims').textContent = S.windowOpen ? S.claimsRemaining : '—';
+  document.getElementById('statClaims').className = S.windowOpen ? 'stat-val live' : 'stat-val';
+  document.getElementById('statWindows').textContent = S.windowCounter;
+  document.getElementById('statPaid').textContent = S.totalPaid.toFixed(3) + ' STT';
+}
+
+function updatePresence() {
+  const card = document.getElementById('presenceCard');
+  const statusText = document.getElementById('presenceStatusText');
+  const icon = document.getElementById('presenceIcon');
+  const label = document.getElementById('presenceLabel');
+
+  if (!S.windowOpen) {
+    card.className = 'presence-card';
+    statusText.className = 'presence-status-text idle';
+    icon.textContent = '◌';
+    label.textContent = 'NO ACTIVE WINDOW';
+    return;
+  }
+
+  if (!S.connected) {
+    card.className = 'presence-card absent';
+    statusText.className = 'presence-status-text absent';
+    icon.textContent = '✕';
+    label.textContent = 'WALLET NOT CONNECTED';
+    return;
+  }
+
+  const present = isPresent();
+  if (present) {
+    card.className = 'presence-card verified';
+    statusText.className = 'presence-status-text verified';
+    icon.textContent = '◈';
+    label.textContent = 'PRESENCE VERIFIED';
+  } else {
+    card.className = 'presence-card absent';
+    statusText.className = 'presence-status-text absent';
+    icon.textContent = '✕';
+    label.textContent = 'NOT PRESENT IN WINDOW';
+  }
+}
+
+function updateClaimBtn() {
+  const btn = document.getElementById('claimBtn');
+  const open = S.windowOpen;
+  const present = isPresent();
+  const claimed = S.hasClaimed;
+  const connected = S.connected;
+
+  if (claimed) {
+    btn.className = 'claim-btn claimed';
+    btn.textContent = `✓ CLAIMED ${S.rewardPerClaim} STT`;
+    btn.disabled = true;
+  } else if (open && connected && present && S.claimsRemaining > 0) {
+    btn.className = 'claim-btn ready';
+    btn.textContent = `CLAIM ${S.rewardPerClaim} STT`;
+    btn.disabled = false;
+  } else if (open && connected && !present) {
+    btn.className = 'claim-btn inactive';
+    btn.textContent = 'NO PRESENCE PROOF';
+    btn.disabled = true;
+  } else {
+    btn.className = 'claim-btn inactive';
+    btn.textContent = 'CLAIM REWARD';
+    btn.disabled = true;
+  }
+}
+
+function updateProofGrid() {
+  const open = S.windowOpen;
+  const present = isPresent();
+  const claimed = S.hasClaimed;
+
+  setProof('pWindow', open ? 'TRUE' : '—', open ? 'ok' : 'pending');
+  setProof('pTrigger', open ? '#' + S.triggerBlock : '—', open ? 'ok' : 'pending');
+  setProof('pYourBlock', S.myPresenceBlock ? '#' + S.myPresenceBlock : '—',
+    S.myPresenceBlock ? 'amber' : 'pending');
+  setProof('pPresence',
+    !open ? '—' : present ? 'TRUE ◈' : 'FALSE ✕',
+    !open ? 'pending' : present ? 'ok' : 'fail'
+  );
+  setProof('pNotClaimed',
+    !open ? '—' : !claimed ? 'TRUE' : 'FALSE — USED',
+    !open ? 'pending' : !claimed ? 'ok' : 'fail'
+  );
+  setProof('pClaimsLeft',
+    open ? S.claimsRemaining + ' / ' + S.maxClaims : '—',
+    open && S.claimsRemaining > 0 ? 'ok' : 'pending'
+  );
+}
+
+function setProof(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'proof-val ' + cls;
+}
+
+/* ════════ FEED ════════ */
+const feedItems = [];
+
+function addFeedItem(type, main, sub, addr) {
+  const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+  feedItems.unshift({ type, main, sub, addr, time: now, block: S.block });
+  if (feedItems.length > 30) feedItems.pop();
+  renderFeed();
+}
+
+function renderFeed() {
+  const list = document.getElementById('feedList');
+  if (!feedItems.length) return;
+
+  list.innerHTML = feedItems.map(f => `
+    <div class="feed-item type-${f.type}">
+      <div class="feed-type-tag">${typeLabel(f.type)}</div>
+      <div class="feed-main">${f.main}</div>
+      ${f.sub ? `<div class="feed-sub">${f.sub}</div>` : ''}
+      <div class="feed-meta">
+        ${f.addr ? `<span>${short(f.addr)}</span>` : ''}
+        <span>blk #${f.block.toLocaleString()}</span>
+        <span>${f.time}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function typeLabel(type) {
+  return {
+    trigger: '⚡ VAULT TRIGGERED',
+    claim: '◈ PRESENCE CLAIMED',
+    close: '— WINDOW CLOSED',
+    system: '◦ SYSTEM',
+    block: '▸ BLOCK',
+  }[type] || type.toUpperCase();
+}
+
+function updatePFList() {
+  const list = document.getElementById('pfList');
+  document.getElementById('pfTotal').textContent = S.activeWallets.length + ' tracked';
+
+  if (!S.activeWallets.length) return;
+
+  list.innerHTML = S.activeWallets.slice(0, 15).map(w => `
+    <div class="pf-item">
+      <div class="pf-dot" style="${w.isYou ? 'background:var(--amber)' : ''}"></div>
+      <span class="pf-addr">${short(w.addr)}</span>
+      <span class="pf-block">#${w.block.toLocaleString()}</span>
+      ${w.isYou ? '<span class="pf-you">YOU</span>' : ''}
+    </div>
+  `).join('');
+}
+
+/* ════════ NOTIFICATIONS ════════ */
+function showNotif(title, body, type = 'success') {
+  const stack = document.getElementById('notifStack');
+  const el = document.createElement('div');
+  el.className = `notif ${type}`;
+  el.innerHTML = `<div class="notif-title">${title}</div>${body ? `<div class="notif-body">${body}</div>` : ''}`;
+  stack.prepend(el);
+  if (stack.children.length > 4) stack.lastChild.remove();
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.4s'; setTimeout(() => el.remove(), 400); }, 4500);
+}
+
+/* ════════ UTILS ════════ */
+function short(addr) {
+  if (!addr || addr.length < 10) return addr || '';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+function randAddr() {
+  return '0x' + [...Array(40)].map(() => '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
+}
+
+/* ════════ INIT ════════ */
+document.getElementById('blockValue').textContent = S.block.toLocaleString();
+addFeedItem('system', 'GhostVault initialized', 'Reactivity subscriptions active — watching WatchedProtocol', '');
+addFeedItem('system', 'PresenceTracker wildcard sub active', 'Monitoring all events on Somnia testnet', '');
+updateUI();
+</script>
+</body>
+</html>
